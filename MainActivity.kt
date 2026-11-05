@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.print.PrintAttributes
 import android.print.PrintManager
 import android.util.Base64
+import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -97,6 +98,11 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        web.evaluateJavascript("if(typeof applyTheme==='function')applyTheme()", null)
+    }
+
     inner class Bridge {
         @JavascriptInterface
         fun available(): Boolean =
@@ -160,6 +166,14 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread { startActivity(Intent.createChooser(send, "ارسال پشتیبان")) }
             } catch (e: Exception) {
                 web.post { web.evaluateJavascript("if(typeof bkDone==='function')bkDone(false,'')", null) }
+            }
+        }
+
+        @JavascriptInterface
+        fun setSecure(on: Boolean) {
+            runOnUiThread {
+                if (on) window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+                else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
             }
         }
 

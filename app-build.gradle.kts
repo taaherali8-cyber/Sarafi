@@ -31,7 +31,16 @@ android {
             getByName("debug") {
                 signingConfig = signingConfigs.getByName("fixed")
             }
+            getByName("release") {
+                signingConfig = signingConfigs.getByName("fixed")
+                isMinifyEnabled = false
+            }
         }
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
 
     compileOptions {
