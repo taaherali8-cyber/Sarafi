@@ -19,16 +19,29 @@ jobs:
           gradle-version: 8.9
       - name: Arrange files
         run: |
-          mkdir -p app/src/main/java/com/example/sarrafi app/src/main/assets app/src/main/res/drawable app/src/main/res/mipmap-anydpi-v26
+          mkdir -p app/src/main/java/com/example/sarrafi app/src/main/assets app/src/main/res/drawable app/src/main/res/mipmap-anydpi-v26 app/src/main/res/xml
           mv MainActivity.kt app/src/main/java/com/example/sarrafi/
           mv AndroidManifest.xml app/src/main/
           mv index.html app/src/main/assets/
           mv app-build.gradle.kts app/build.gradle.kts
           mv ic_bg.xml ic_fg.xml app/src/main/res/drawable/
           mv ic_launcher.xml app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          mv file_paths.xml app/src/main/res/xml/file_paths.xml
+      - name: Prepare signing key
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$GITHUB_WORKSPACE/ks.p12"
+            echo "KS_FILE=$GITHUB_WORKSPACE/ks.p12" >> "$GITHUB_ENV"
+            echo "Using fixed signing key"
+          else
+            echo "No signing secret found: using the default debug key"
+          fi
       - name: Build
         run: gradle assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: sarrafi-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+concurrency: 
