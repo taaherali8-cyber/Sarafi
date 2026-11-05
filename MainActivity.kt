@@ -1,34 +1,58 @@
 package com.example.sarrafi
 
 import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
-import android.webkit.ValueCallback
-import androidx.activity.result.contract.ActivityResultContracts
+import android.os.Bundle
 import android.print.PrintAttributes
 import android.print.PrintManager
-import android.os.Bundle
-import android.provider.MediaStore
+import android.util.Base64
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import java.io.File
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.webkit.WebViewAssetLoader
 
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private var printView: WebView? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+    private var pendingBytes: ByteArray? = null
+    private var pendingName: String = ""
+
+    // انتخاب فایل (برای بازیابی پشتیبان و پیوست سند)
     private val picker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         fileCallback?.onReceiveValue(if (uri != null) arrayOf(uri) else null)
         fileCallback = null
+    }
+
+    // ذخیره‌ی فایل با پنجره‌ی استاندارد اندروید (روی همه‌ی نسخه‌ها و گوشی‌ها کار می‌کند)
+    private val saver = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
+        val uri = res.data?.data
+        val bytes = pendingBytes
+        var ok = false
+        if (res.resultCode == RESULT_OK && uri != null && bytes != null) {
+            try {
+                contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
+                ok = true
+            } catch (e: Exception) {
+                ok = false
+            }
+        }
+        val n = pendingName.replace("'", "")
+        pendingBytes = null
+        web.evaluateJavascript("if(typeof bkDone==='function')bkDone($ok,'$n')", null)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -44,6 +68,7 @@ class MainActivity : AppCompatActivity() {
         web.settings.javaScriptEnabled = true
         web.settings.domStorageEnabled = true
         web.settings.allowFileAccess = false
+        web.settings.allowContentAccess = true
         web.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(
                 view: WebView,
@@ -100,24 +125,41 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
-        fun saveBackup(text: String) {
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, "sarrafi-backup-${System.currentTimeMillis()}.json")
-                put(MediaStore.Downloads.MIME_TYPE, "application/json")
+        fun saveFile(name: String, mime: String, b64: String) {
+            pendingBytes = Base64.decode(b64, Base64.DEFAULT)
+            pendingName = name
+            runOnUiThread {
+                val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = mime
+                    putExtra(Intent.EXTRA_TITLE, name)
+                }
+                try {
+                    saver.launch(i)
+                } catch (e: Exception) {
+                    pendingBytes = null
+                    web.evaluateJavascript("if(typeof bkDone==='function')bkDone(false,'')", null)
+                }
             }
-            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            if (uri != null) contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }
         }
 
         @JavascriptInterface
-        fun saveFile(name: String, mime: String, b64: String) {
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, name)
-                put(MediaStore.Downloads.MIME_TYPE, mime)
-            }
-            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            if (uri != null) contentResolver.openOutputStream(uri)?.use {
-                it.write(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
+        fun shareFile(name: String, mime: String, b64: String) {
+            try {
+                val dir = File(cacheDir, "backups")
+                dir.mkdirs()
+                dir.listFiles()?.forEach { it.delete() }
+                val f = File(dir, name)
+                f.writeBytes(Base64.decode(b64, Base64.DEFAULT))
+                val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", f)
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = mime
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                runOnUiThread { startActivity(Intent.createChooser(send, "ارسال پشتیبان")) }
+            } catch (e: Exception) {
+                web.post { web.evaluateJavascript("if(typeof bkDone==='function')bkDone(false,'')", null) }
             }
         }
 

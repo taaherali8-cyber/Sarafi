@@ -9,11 +9,31 @@ android {
 
     defaultConfig {
         applicationId = "com.example.sarrafi"
-        minSdk = 29
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
     }
+
+    // کلید امضای ثابت (اختیاری): اگر در گیت‌هاب ساخته شود، نسخه‌های بعدی روی نسخه‌ی قبلی نصب می‌شوند و اطلاعات پاک نمی‌شود
+    val ksFile: String? = System.getenv("KS_FILE")
+    if (ksFile != null) {
+        signingConfigs {
+            create("fixed") {
+                storeFile = file(ksFile)
+                storePassword = "sarrafi-ks-2026"
+                keyAlias = "sarrafi"
+                keyPassword = "sarrafi-ks-2026"
+                storeType = "pkcs12"
+            }
+        }
+        buildTypes {
+            getByName("debug") {
+                signingConfig = signingConfigs.getByName("fixed")
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
