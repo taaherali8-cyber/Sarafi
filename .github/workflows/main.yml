@@ -2,6 +2,8 @@ name: Build APK
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -49,3 +51,15 @@ jobs:
         with:
           name: sarrafi-apk
           path: app/build/outputs/apk/**/*.apk
+      - name: Prepare release file
+        run: |
+          APK=$(ls app/build/outputs/apk/*/*.apk | head -1)
+          cp "$APK" "$GITHUB_WORKSPACE/daftar-hossein.apk"
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.${{ github.run_number }}
+          name: "دفتر حسین - نسخه ${{ github.run_number }}"
+          body: "فایل نصب برنامه: daftar-hossein.apk (از بخش Assets پایین همین صفحه دانلود کنید)."
+          files: daftar-hossein.apk
+          make_latest: true
