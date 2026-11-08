@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
 
+        WebView.setWebContentsDebuggingEnabled(false)
         web.settings.javaScriptEnabled = true
         web.settings.domStorageEnabled = true
         web.settings.allowFileAccess = false
@@ -85,6 +86,10 @@ class MainActivity : AppCompatActivity() {
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
                 loader.shouldInterceptRequest(request.url)
+
+            // فقط صفحه‌ی خود برنامه اجازه‌ی بارگذاری دارد؛ هر آدرس بیرونی مسدود می‌شود
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+                request.url.host != "appassets.androidplatform.net"
         }
         web.addJavascriptInterface(Bridge(), "AndroidBio")
         web.loadUrl("https://appassets.androidplatform.net/assets/index.html")
@@ -122,7 +127,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     })
                 val info = BiometricPrompt.PromptInfo.Builder()
-                    .setTitle("ورود به دفتر صرافی")
+                    .setTitle("ورود به دفتر حسین")
                     .setNegativeButtonText("استفاده از رمز")
                     .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
                     .build()

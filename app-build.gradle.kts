@@ -8,11 +8,11 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.sarrafi"
+        applicationId = "ir.hossein.daftar"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1)
+        versionName = "1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
     }
 
     // کلید امضای ثابت (اختیاری): اگر در گیت‌هاب ساخته شود، نسخه‌های بعدی روی نسخه‌ی قبلی نصب می‌شوند و اطلاعات پاک نمی‌شود
